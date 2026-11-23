@@ -95,6 +95,12 @@ function HeadsUpModal({ row, host, inviteeZone, onClose }) {
   )
 }
 
+function isValidTime(str) {
+  if (!str || !/^\d{2}:\d{2}$/.test(str)) return false
+  const [h, m] = str.split(':').map(Number)
+  return h >= 0 && h <= 23 && m >= 0 && m <= 59
+}
+
 export default function DSTCheckScreen() {
   const [hostId, setHostId] = useState(hosts[0].id)
   const [inviteeZone, setInviteeZone] = useState('America/New_York')
@@ -102,7 +108,11 @@ export default function DSTCheckScreen() {
   const [modalRow, setModalRow] = useState(null)
 
   const host = hosts.find(h => h.id === hostId)
-  const rows = useMemo(() => getOccurrences(host, inviteeZone, anchorTime), [host, inviteeZone, anchorTime])
+  const timeValid = isValidTime(anchorTime)
+  const rows = useMemo(
+    () => timeValid ? getOccurrences(host, inviteeZone, anchorTime) : [],
+    [host, inviteeZone, anchorTime, timeValid]
+  )
 
   return (
     <div className="screen">
@@ -125,16 +135,25 @@ export default function DSTCheckScreen() {
         <label className="field">
           <span>Anchor time ({cityLabel(host.zone)})</span>
           <input type="time" value={anchorTime} onChange={e => setAnchorTime(e.target.value)} />
+          {!timeValid && anchorTime !== '' && (
+            <span className="field-error">Enter a valid time (00:00–23:59).</span>
+          )}
         </label>
       </div>
 
-      <p className="dst-note">
-        Recurring meetings stay at <strong>{anchorTime} {cityLabel(host.zone)}</strong> for{' '}
-        {host.name.split(' ')[0]}. The invitee's time shifts when either side's clocks change,
-        and both get a heads-up 7 days before.
-      </p>
+      {timeValid && (
+        <p className="dst-note">
+          Recurring meetings stay at <strong>{anchorTime} {cityLabel(host.zone)}</strong> for{' '}
+          {host.name.split(' ')[0]}. The invitee's time shifts when either side's clocks change,
+          and both get a heads-up 7 days before.
+        </p>
+      )}
 
-      <div className="table-wrap">
+      {!timeValid && (
+        <p className="no-slots">Enter a valid anchor time to see the schedule.</p>
+      )}
+
+      {timeValid && <div className="table-wrap">
         <table className="dst-table">
           <thead>
             <tr>
@@ -176,7 +195,7 @@ export default function DSTCheckScreen() {
             })}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {modalRow && (
         <HeadsUpModal

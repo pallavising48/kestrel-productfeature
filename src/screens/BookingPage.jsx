@@ -3,50 +3,71 @@ import { DateTime } from 'luxon'
 import { hosts, inviteeZones, DEFAULT_DATE, company } from '../data/seed.js'
 import { generateSlots, findClockChanges, cityLabel, tzAbbr } from '../utils/slots.js'
 
+function parseDateStrict(str) {
+  if (!str) return null
+  const dt = DateTime.fromISO(str)
+  if (!dt.isValid) return null
+  if (dt.year < 2026 || dt.year > 2028) return null
+  return dt
+}
+
 export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
   const [hostId, setHostId] = useState(hosts[0].id)
   const [date, setDate] = useState(DEFAULT_DATE)
 
   const host = hosts.find(h => h.id === hostId)
-  const slots = useMemo(() => generateSlots(host, date, inviteeZone), [host, date, inviteeZone])
+  const chosenDT = parseDateStrict(date)
+  const dateValid = chosenDT !== null
 
-  // Scan 15 days starting from 1 day before chosen date to catch recent changes too
+  const slots = useMemo(() => {
+    if (!dateValid) return []
+    return generateSlots(host, date, inviteeZone)
+  }, [host, date, inviteeZone, dateValid])
+
   const banner = useMemo(() => {
-    const scanStart = DateTime.fromISO(date).minus({ days: 1 }).toISODate()
+    if (!dateValid || host.zone === inviteeZone) return null
+
+    // Scan 1 day before the chosen date through +14 days (15-day window)
+    const scanStart = chosenDT.minus({ days: 1 }).toISODate()
     const hChanges = findClockChanges(host.zone, scanStart, 15)
     const iChanges = findClockChanges(inviteeZone, scanStart, 15)
-    const all = [...hChanges, ...iChanges].sort((a, b) => (a.date < b.date ? -1 : 1))
+
+    // Deduplicate: at most one entry per zone per change date
+    const seen = new Set()
+    const all = []
+    for (const c of [...hChanges, ...iChanges]) {
+      const key = `${c.zone}-${c.date.toISODate()}`
+      if (!seen.has(key)) { seen.add(key); all.push(c) }
+    }
+    all.sort((a, b) => (a.date < b.date ? -1 : 1))
     if (all.length === 0) return null
 
-    const chosenDT = DateTime.fromISO(date)
     const gapNow = Math.abs(
       DateTime.fromISO(date, { zone: host.zone }).offset -
       DateTime.fromISO(date, { zone: inviteeZone }).offset
     ) / 60
 
-    const futureChanges = all.filter(c => c.date >= chosenDT)
-    let gapText = ''
+    const futureChanges = all.filter(c => c.date > chosenDT)
+    let gapText
     if (futureChanges.length > 0) {
-      const nextChangeDateISO = futureChanges[futureChanges.length - 1].date.plus({ days: 1 }).toISODate()
+      const afterISO = futureChanges[futureChanges.length - 1].date.plus({ days: 1 }).toISODate()
       const gapAfter = Math.abs(
-        DateTime.fromISO(nextChangeDateISO, { zone: host.zone }).offset -
-        DateTime.fromISO(nextChangeDateISO, { zone: inviteeZone }).offset
+        DateTime.fromISO(afterISO, { zone: host.zone }).offset -
+        DateTime.fromISO(afterISO, { zone: inviteeZone }).offset
       ) / 60
-      gapText = ` The gap to ${host.name.split(' ')[0]} is ${gapNow}h until ${futureChanges[0].date.toFormat('d MMM')}, ${gapAfter}h after.`
+      gapText = `The gap to ${host.name.split(' ')[0]} is ${gapNow} hours until ${futureChanges[0].date.toFormat('d MMM')}, then ${gapAfter} hours.`
     } else {
-      gapText = ` The gap to ${host.name.split(' ')[0]} is now ${gapNow}h.`
+      gapText = `The gap to ${host.name.split(' ')[0]} is now ${gapNow} hours.`
     }
 
     const parts = all.map((c, i) => {
       const city = cityLabel(c.zone)
       const d = c.date.toFormat('d MMM')
-      const isPast = c.date < chosenDT
-      if (i === 0) return isPast ? `Clocks changed in ${city} on ${d}` : `Clocks change in ${city} on ${d}`
-      return isPast ? `changed in ${city} on ${d}` : `change in ${city} on ${d}`
+      return i === 0 ? `Clocks change in ${city} on ${d}` : `and in ${city} on ${d}`
     })
 
-    return parts.join(' and ') + '.' + gapText + ' Times below are already adjusted.'
-  }, [host, inviteeZone, date])
+    return `${parts.join(' ')}. ${gapText} Times below are already adjusted.`
+  }, [host, inviteeZone, date, dateValid, chosenDT])
 
   return (
     <div className="screen">
@@ -68,30 +89,41 @@ export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
         </label>
         <label className="field">
           <span>Date</span>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          <input
+            type="date"
+            value={date}
+            min="2026-01-01"
+            max="2028-12-31"
+            onChange={e => setDate(e.target.value)}
+          />
+          {!dateValid && date !== '' && (
+            <span className="field-error">Enter a valid date between 2026 and 2028.</span>
+          )}
         </label>
       </div>
 
-      {banner && <div className="dst-banner">{banner}</div>}
+      {dateValid && banner && <div className="dst-banner">{banner}</div>}
 
-      {slots.length === 0 ? (
-        <p className="no-slots">No available slots on this day (non-working day or outside hours).</p>
-      ) : (
-        <div className="slots-grid">
-          {slots.map((s, i) => (
-            <button key={i} className="slot-btn" onClick={() => onBook({ slot: s, host, inviteeZone })}>
-              <span className="slot-primary">
-                {s.inviteeDT.toFormat('HH:mm')} your time
-                <em> ({cityLabel(inviteeZone)}, {tzAbbr(s.inviteeDT)})</em>
-              </span>
-              <span className="slot-secondary">
-                {s.hostDT.toFormat('HH:mm')} {host.name.split(' ')[0]}'s time
-                <em> ({cityLabel(host.zone)}, {tzAbbr(s.hostDT)})</em>
-              </span>
-              {s.dayTag && <span className="day-tag">{s.dayTag}</span>}
-            </button>
-          ))}
-        </div>
+      {dateValid && (
+        slots.length === 0 ? (
+          <p className="no-slots">No available slots on this day (non-working day or outside hours).</p>
+        ) : (
+          <div className="slots-grid">
+            {slots.map((s, i) => (
+              <button key={i} className="slot-btn" onClick={() => onBook({ slot: s, host, inviteeZone })}>
+                <span className="slot-primary">
+                  {s.inviteeDT.toFormat('HH:mm')} your time
+                  <em> ({cityLabel(inviteeZone)}, {tzAbbr(s.inviteeDT)})</em>
+                </span>
+                <span className="slot-secondary">
+                  {s.hostDT.toFormat('HH:mm')} {host.name.split(' ')[0]}'s time
+                  <em> ({cityLabel(host.zone)}, {tzAbbr(s.hostDT)})</em>
+                </span>
+                {s.dayTag && <span className="day-tag">{s.dayTag}</span>}
+              </button>
+            ))}
+          </div>
+        )
       )}
     </div>
   )

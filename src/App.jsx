@@ -48,10 +48,9 @@ export default function App() {
 
   // "Viewing as" label per tab
   const adminHost = hosts[0]
-  const inviteeName = confirmed?.inviteeName ?? 'invitee'
   const viewingAs = {
-    booking: `Viewing as: ${inviteeName}, invitee (${cityLabel(inviteeZone)})`,
-    emails:  `Viewing as: ${inviteeName}, invitee (${cityLabel(inviteeZone)})`,
+    booking: `Viewing as: invitee (${cityLabel(inviteeZone)})`,
+    emails:  `Viewing as: invitee (${cityLabel(inviteeZone)})`,
     dst:     `Viewing as: ${adminHost.name}, host (${cityLabel(adminHost.zone)})`,
   }
 
