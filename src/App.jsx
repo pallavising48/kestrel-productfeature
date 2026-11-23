@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import './App.css'
+import BookingPage from './screens/BookingPage.jsx'
+import ConfirmStep from './screens/ConfirmStep.jsx'
+import ConfirmationScreen from './screens/ConfirmationScreen.jsx'
+import DSTCheckScreen from './screens/DSTCheckScreen.jsx'
 
-const SCREENS = [
-  { id: 'booking',      label: 'Booking Page' },
-  { id: 'confirmation', label: 'Confirmation Email' },
-  { id: 'dst',          label: 'Daylight-Saving Check' },
+const TABS = [
+  { id: 'booking', label: 'Booking page' },
+  { id: 'dst', label: 'DST check (admin)' },
 ]
 
 function Logo() {
@@ -17,18 +20,28 @@ function Logo() {
   )
 }
 
-function PlaceholderScreen({ title }) {
-  return (
-    <div className="screen-card">
-      <h2 className="screen-title">{title}</h2>
-      <p className="coming-soon">Coming soon</p>
-    </div>
-  )
-}
-
 export default function App() {
-  const [active, setActive] = useState('booking')
-  const current = SCREENS.find(s => s.id === active)
+  const [tab, setTab] = useState('booking')
+  // booking flow state
+  const [bookingData, setBookingData] = useState(null)      // slot selected
+  const [confirmed, setConfirmed] = useState(null)          // name/email added
+
+  function handleBook(data) {
+    setBookingData(data)
+  }
+  function handleConfirm(data) {
+    setConfirmed(data)
+  }
+  function handleReset() {
+    setBookingData(null)
+    setConfirmed(null)
+  }
+
+  function renderBookingFlow() {
+    if (confirmed) return <ConfirmationScreen booking={confirmed} onReset={handleReset} />
+    if (bookingData) return <ConfirmStep booking={bookingData} onConfirm={handleConfirm} onBack={handleReset} />
+    return <BookingPage onBook={handleBook} />
+  }
 
   return (
     <div className="app">
@@ -43,23 +56,23 @@ export default function App() {
       </header>
 
       <nav className="nav" aria-label="Screens">
-        {SCREENS.map(s => (
+        {TABS.map(t => (
           <button
-            key={s.id}
-            className={`nav-btn${active === s.id ? ' nav-btn--active' : ''}`}
-            onClick={() => setActive(s.id)}
+            key={t.id}
+            className={`nav-btn${tab === t.id ? ' nav-btn--active' : ''}`}
+            onClick={() => { setTab(t.id); handleReset() }}
           >
-            {s.label}
+            {t.label}
           </button>
         ))}
       </nav>
 
       <main className="main">
-        <PlaceholderScreen title={current.label} />
+        {tab === 'booking' ? renderBookingFlow() : <DSTCheckScreen />}
       </main>
 
       <footer className="footer">
-        <span>Kestrel · prototype shell</span>
+        <span>Kestrel · prototype · Pemberton Insurance demo</span>
       </footer>
     </div>
   )
