@@ -4,10 +4,18 @@ import BookingPage from './screens/BookingPage.jsx'
 import ConfirmStep from './screens/ConfirmStep.jsx'
 import ConfirmationScreen from './screens/ConfirmationScreen.jsx'
 import DSTCheckScreen from './screens/DSTCheckScreen.jsx'
+import { hosts, inviteeZones } from './data/seed.js'
+import { cityLabel } from './utils/slots.js'
+
+function detectDefaultZone() {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return inviteeZones.includes(tz) ? tz : inviteeZones[1]
+}
 
 const TABS = [
   { id: 'booking', label: 'Booking page' },
-  { id: 'dst', label: 'DST check (admin)' },
+  { id: 'emails',  label: 'Emails' },
+  { id: 'dst',     label: 'DST check (admin)' },
 ]
 
 function Logo() {
@@ -22,25 +30,47 @@ function Logo() {
 
 export default function App() {
   const [tab, setTab] = useState('booking')
-  // booking flow state
-  const [bookingData, setBookingData] = useState(null)      // slot selected
-  const [confirmed, setConfirmed] = useState(null)          // name/email added
+  const [inviteeZone, setInviteeZone] = useState(detectDefaultZone)
+  const [pendingBooking, setPendingBooking] = useState(null)
+  const [confirmed, setConfirmed] = useState(null)
 
-  function handleBook(data) {
-    setBookingData(data)
-  }
+  function handleBook(data) { setPendingBooking(data) }
   function handleConfirm(data) {
     setConfirmed(data)
+    setPendingBooking(null)
+    setTab('emails')
   }
   function handleReset() {
-    setBookingData(null)
+    setPendingBooking(null)
     setConfirmed(null)
+    setTab('booking')
+  }
+
+  // "Viewing as" label per tab
+  const adminHost = hosts[0]
+  const inviteeName = confirmed?.inviteeName ?? 'invitee'
+  const viewingAs = {
+    booking: `Viewing as: ${inviteeName}, invitee (${cityLabel(inviteeZone)})`,
+    emails:  `Viewing as: ${inviteeName}, invitee (${cityLabel(inviteeZone)})`,
+    dst:     `Viewing as: ${adminHost.name}, host (${cityLabel(adminHost.zone)})`,
   }
 
   function renderBookingFlow() {
+    if (pendingBooking) return <ConfirmStep booking={pendingBooking} onConfirm={handleConfirm} onBack={() => setPendingBooking(null)} />
+    return <BookingPage onBook={handleBook} inviteeZone={inviteeZone} onZoneChange={setInviteeZone} />
+  }
+
+  // Emails tab: use confirmed booking if available, else show placeholder prompt
+  function renderEmails() {
     if (confirmed) return <ConfirmationScreen booking={confirmed} onReset={handleReset} />
-    if (bookingData) return <ConfirmStep booking={bookingData} onConfirm={handleConfirm} onBack={handleReset} />
-    return <BookingPage onBook={handleBook} />
+    return (
+      <div className="screen">
+        <div className="placeholder-hint">
+          <span className="placeholder-icon">✉</span>
+          <p>Book a slot on the <strong>Booking page</strong> tab to see the email previews here.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -60,15 +90,19 @@ export default function App() {
           <button
             key={t.id}
             className={`nav-btn${tab === t.id ? ' nav-btn--active' : ''}`}
-            onClick={() => { setTab(t.id); handleReset() }}
+            onClick={() => setTab(t.id)}
           >
             {t.label}
           </button>
         ))}
       </nav>
 
+      <div className="viewing-as">{viewingAs[tab]}</div>
+
       <main className="main">
-        {tab === 'booking' ? renderBookingFlow() : <DSTCheckScreen />}
+        {tab === 'booking' && renderBookingFlow()}
+        {tab === 'emails'  && renderEmails()}
+        {tab === 'dst'     && <DSTCheckScreen />}
       </main>
 
       <footer className="footer">

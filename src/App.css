@@ -46,6 +46,34 @@
 .nav-btn--active { background: var(--brand); border-color: var(--brand); color: #fff; }
 .nav-btn--active:hover { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; }
 
+/* ── Viewing-as label ── */
+.viewing-as {
+  max-width: 900px; margin: 0 auto; width: 100%;
+  padding: 0.3rem 1rem 0.5rem;
+  font-size: 0.75rem; color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+/* ── Role toggle (emails tab) ── */
+.role-toggle-row {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+}
+.role-toggle-label { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.role-toggle { display: flex; gap: 0.4rem; }
+
+/* ── Inline secondary time in email ── */
+.email-time-secondary-inline {
+  font-size: 0.85rem; font-weight: 400; color: var(--muted);
+}
+
+/* ── Placeholder hint (no booking yet) ── */
+.placeholder-hint {
+  display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
+  padding: 4rem 1rem; color: var(--muted); text-align: center;
+}
+.placeholder-icon { font-size: 2.5rem; }
+.placeholder-hint p { font-size: 0.95rem; }
+
 /* ── Main ── */
 .main { flex: 1; padding: 1.5rem 1rem; max-width: 900px; margin: 0 auto; width: 100%; }
 

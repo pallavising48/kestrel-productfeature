@@ -3,14 +3,8 @@ import { DateTime } from 'luxon'
 import { hosts, inviteeZones, DEFAULT_DATE, company } from '../data/seed.js'
 import { generateSlots, findClockChanges, cityLabel } from '../utils/slots.js'
 
-function detectDefaultZone() {
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
-  return inviteeZones.includes(tz) ? tz : inviteeZones[1] // fallback New York
-}
-
-export default function BookingPage({ onBook }) {
+export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
   const [hostId, setHostId] = useState(hosts[0].id)
-  const [inviteeZone, setInviteeZone] = useState(detectDefaultZone)
   const [date, setDate] = useState(DEFAULT_DATE)
 
   const host = hosts.find(h => h.id === hostId)
@@ -28,8 +22,6 @@ export default function BookingPage({ onBook }) {
     return clockChanges.map(c => {
       const city = cityLabel(c.zone)
       const d = c.date.toFormat('EEE d MMM')
-      const beforeH = Math.abs(c.offsetBefore / 60)
-      const afterH = Math.abs(c.offsetAfter / 60)
       const gapBefore = Math.abs(
         DateTime.fromISO(date, { zone: host.zone }).offset -
         DateTime.fromISO(date, { zone: inviteeZone }).offset
@@ -58,7 +50,7 @@ export default function BookingPage({ onBook }) {
         </label>
         <label className="field">
           <span>Your time zone</span>
-          <select value={inviteeZone} onChange={e => setInviteeZone(e.target.value)}>
+          <select value={inviteeZone} onChange={e => onZoneChange(e.target.value)}>
             {inviteeZones.map(z => <option key={z} value={z}>{z.replace(/_/g, ' ')}</option>)}
           </select>
         </label>
