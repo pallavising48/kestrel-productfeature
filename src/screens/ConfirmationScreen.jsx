@@ -74,31 +74,47 @@ export default function ConfirmationScreen({ booking, onReset }) {
   const recipientName = isInvitee ? inviteeName : host.name.split(' ')[0]
   const subjectDate = slot.hostDT.toFormat('EEE d MMM')
 
-  // Find first clock change in 14-day window from the slot date
-  const slotDateISO = slot.hostDT.toISODate()
-  const allChanges = [
-    ...findClockChanges(host.zone, slotDateISO, 14),
-    ...findClockChanges(inviteeZone, slotDateISO, 14),
-  ].sort((a, b) => (a.date < b.date ? -1 : 1))
-  const nextChange = allChanges[0] ?? null
+  // 8 weekly occurrences starting from the booked slot
+  const occurrences = Array.from({ length: 8 }, (_, i) => ({
+    hostDT: slot.hostDT.plus({ weeks: i }),
+    inviteeDT: slot.hostDT.plus({ weeks: i }).setZone(inviteeZone),
+  }))
 
-  let headsUpSendDT = null
-  let inviteeBefore = null
-  let inviteeAfter = null
-  let changingCity = null
-  let headsUpSendStatus = null
+  // First occurrence where the invitee's displayed time (HH:mm) changes
+  let changeIdx = -1
+  for (let i = 1; i < occurrences.length; i++) {
+    if (occurrences[i].inviteeDT.toFormat('HH:mm') !== occurrences[i - 1].inviteeDT.toFormat('HH:mm')) {
+      changeIdx = i
+      break
+    }
+  }
 
-  if (nextChange) {
-    headsUpSendDT = nextChange.date.minus({ days: 7 })
-    changingCity = cityLabel(nextChange.zone)
-    inviteeBefore = slot.hostDT.setZone(inviteeZone)
-    inviteeAfter = slot.hostDT.plus({ days: 7 }).setZone(inviteeZone)
-    const isFuture = headsUpSendDT > DateTime.now()
-    headsUpSendStatus = {
-      scheduled: isFuture,
-      text: isFuture
-        ? `Scheduled to send ${headsUpSendDT.toFormat('d MMM yyyy')}`
-        : `Sent ${headsUpSendDT.toFormat('d MMM yyyy')}`,
+  const hasHeadsUp = changeIdx !== -1
+  let inviteeBefore = null, inviteeAfter = null, afterOcc = null
+  let changingCity = null, changeDate = null, headsUpSendStatus = null
+
+  if (hasHeadsUp) {
+    const beforeOcc = occurrences[changeIdx - 1]
+    afterOcc = occurrences[changeIdx]
+    inviteeBefore = beforeOcc.inviteeDT
+    inviteeAfter = afterOcc.inviteeDT
+
+    const inviteeSideChanged = beforeOcc.inviteeDT.offset !== afterOcc.inviteeDT.offset
+    const changingZone = inviteeSideChanged ? inviteeZone : host.zone
+    changingCity = cityLabel(changingZone)
+
+    const scanChanges = findClockChanges(changingZone, beforeOcc.hostDT.toISODate(), 8)
+    changeDate = scanChanges[0]?.date ?? null
+
+    if (changeDate) {
+      const headsUpSendDT = changeDate.minus({ days: 7 })
+      const isFuture = headsUpSendDT > DateTime.now()
+      headsUpSendStatus = {
+        scheduled: isFuture,
+        text: isFuture
+          ? `Scheduled to send ${headsUpSendDT.toFormat('d MMM yyyy')}`
+          : `Sent ${headsUpSendDT.toFormat('d MMM yyyy')}`,
+      }
     }
   }
 
@@ -164,41 +180,34 @@ export default function ConfirmationScreen({ booking, onReset }) {
       </EmailCard>
 
       {/* Email 3: Clock-change heads-up */}
-      {nextChange ? (
+      {hasHeadsUp ? (
         <EmailCard
           label="Email preview · clock change heads-up"
-          subject={`Your ${company.meetingType} time is changing`}
+          subject={`Your weekly ${company.meetingType} time is changing`}
           sendStatus={headsUpSendStatus}
         >
           {isInvitee ? (
             <>
               <p>Hi {inviteeName},</p>
               <p>
-                Your <strong>{company.meetingType}</strong> with {company.name} moves to{' '}
-                <strong>{inviteeAfter?.toFormat('HH:mm')}</strong> from {inviteeAfter?.toFormat('EEE d MMM')}{' '}
-                (it was <strong>{inviteeBefore?.toFormat('HH:mm')}</strong>).
+                From <strong>{afterOcc.inviteeDT.toFormat('EEE d MMM')}</strong>, your weekly{' '}
+                <strong>{company.meetingType}</strong> is at{' '}
+                <strong>{inviteeAfter.toFormat('HH:mm')} {cityLabel(inviteeZone)} ({tzAbbr(inviteeAfter)})</strong>{' '}
+                (it was <strong>{inviteeBefore.toFormat('HH:mm')}</strong>).
               </p>
-              <TimeLine
-                primaryDT={inviteeAfter}  primaryCity={cityLabel(inviteeZone)}
-                secondaryDT={slot.hostDT} secondaryCity={cityLabel(host.zone)} secondaryName={host.name.split(' ')[0]}
-              />
-              <p>Clocks change in <strong>{changingCity}</strong> on {nextChange.date.toFormat('EEE d MMM')}. No action needed.</p>
+              <p>Clocks change in <strong>{changingCity}</strong> on {changeDate?.toFormat('EEE d MMM')}. No action needed.</p>
             </>
           ) : (
             <>
               <p>Hi {host.name.split(' ')[0]},</p>
               <p>
                 Your time stays{' '}
-                <strong>{slot.hostDT.toFormat('HH:mm')} {cityLabel(host.zone)} ({tzAbbr(slot.hostDT)})</strong>.
+                <strong>{afterOcc.hostDT.toFormat('HH:mm')} {cityLabel(host.zone)} ({tzAbbr(afterOcc.hostDT)})</strong>.
               </p>
-              <TimeLine
-                primaryDT={slot.hostDT}    primaryCity={cityLabel(host.zone)}
-                secondaryDT={inviteeAfter} secondaryCity={cityLabel(inviteeZone)} secondaryName={inviteeName}
-              />
               <p>
-                Clocks change in <strong>{changingCity}</strong> on {nextChange.date.toFormat('EEE d MMM')}.{' '}
+                Clocks change in <strong>{changingCity}</strong> on {changeDate?.toFormat('EEE d MMM')}.{' '}
                 <strong>{inviteeName} ({cityLabel(inviteeZone)})</strong> will see{' '}
-                <strong>{inviteeAfter?.toFormat('HH:mm')}</strong> from {inviteeAfter?.toFormat('EEE d MMM')}.
+                <strong>{inviteeAfter.toFormat('HH:mm')}</strong> from {afterOcc.inviteeDT.toFormat('EEE d MMM')}.
               </p>
             </>
           )}
@@ -207,7 +216,7 @@ export default function ConfirmationScreen({ booking, onReset }) {
         <div className="email-card email-card--muted">
           <div className="email-label">Clock change heads-up</div>
           <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--muted)' }}>
-            No clock changes in the next 14 days for either zone — no heads-up email needed.
+            No clock changes in this series.
           </p>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { company } from '../data/seed.js'
-import { cityLabel } from '../utils/slots.js'
+import { cityLabel, tzAbbr } from '../utils/slots.js'
 
 export default function ConfirmStep({ booking, onConfirm, onBack }) {
   const [name, setName] = useState('')
@@ -21,13 +21,14 @@ export default function ConfirmStep({ booking, onConfirm, onBack }) {
         <div className="confirm-time">
           <span className="confirm-time-primary">
             {slot.inviteeDT.toFormat('EEE d MMM, HH:mm')}
-            <em> {cityLabel(inviteeZone)} ({slot.inviteeDT.offsetNameShort})</em>
+            <em> {cityLabel(inviteeZone)} ({tzAbbr(slot.inviteeDT)})</em>
           </span>
           <span className="confirm-time-secondary">
             {slot.hostDT.toFormat('HH:mm')} {host.name.split(' ')[0]}'s time
-            <em> ({cityLabel(host.zone)}, {slot.hostDT.offsetNameShort})</em>
+            <em> ({cityLabel(host.zone)}, {tzAbbr(slot.hostDT)})</em>
           </span>
         </div>
+        <p className="confirm-meta">Weekly {company.meetingType}, 8 weeks from {slot.hostDT.toFormat('d MMM yyyy')}</p>
         <p className="confirm-meta">{company.name} · {host.name} · {company.durationMin} min</p>
       </div>
 
