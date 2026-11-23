@@ -70,18 +70,19 @@ function EmailCard({ label, subject, sendStatus, children }) {
 }
 
 export default function ConfirmationScreen({ booking, onReset }) {
-  const { slot, host, inviteeZone, inviteeName = 'Alex Chen', isRecurring = true } = booking
+  const { slot, host, inviteeZone, inviteeName = 'Alex Chen', repeats = 'none', endsAfterWeeks = null } = booking
   const [role, setRole] = useState('invitee')
   const isInvitee = role === 'invitee'
   const isSameZone = host.zone === inviteeZone
   const recipientName = isInvitee ? inviteeName : host.name.split(' ')[0]
   const subjectDate = slot.hostDT.toFormat('EEE d MMM')
-  const confirmSubject = isRecurring
+  const confirmSubject = repeats === 'weekly'
     ? `Confirmed: weekly ${company.meetingType} from ${subjectDate}`
     : `Confirmed: ${company.meetingType}, ${subjectDate}`
 
-  // 8 weekly occurrences starting from the booked slot
-  const occurrences = Array.from({ length: 8 }, (_, i) => ({
+  // Weekly occurrences: N if endsAfterWeeks is set, 52 (≈12 months) if Never, 0 if one-off
+  const scanWeeks = repeats === 'weekly' ? (endsAfterWeeks ?? 52) : 0
+  const occurrences = Array.from({ length: scanWeeks }, (_, i) => ({
     hostDT: slot.hostDT.plus({ weeks: i }),
     inviteeDT: slot.hostDT.plus({ weeks: i }).setZone(inviteeZone),
   }))
@@ -192,7 +193,7 @@ export default function ConfirmationScreen({ booking, onReset }) {
       </EmailCard>
 
       {/* Email 3: Clock-change heads-up */}
-      {!isRecurring ? (
+      {repeats === 'none' ? (
         <div className="email-card email-card--muted">
           <div className="email-label">Clock change heads-up</div>
           <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--muted)' }}>
@@ -235,7 +236,7 @@ export default function ConfirmationScreen({ booking, onReset }) {
         <div className="email-card email-card--muted">
           <div className="email-label">Clock change heads-up</div>
           <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--muted)' }}>
-            No clock changes affect this weekly series (8 weeks from {slot.hostDT.toFormat('d MMM yyyy')}).
+            No clock change affects this series.
           </p>
         </div>
       )}

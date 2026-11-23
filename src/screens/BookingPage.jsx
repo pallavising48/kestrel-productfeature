@@ -14,6 +14,9 @@ function parseDateStrict(str) {
 export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
   const [hostId, setHostId] = useState(hosts[0].id)
   const [date, setDate] = useState(DEFAULT_DATE)
+  const [repeats, setRepeats] = useState('none')
+  const [endsType, setEndsType] = useState('never')
+  const [endsAfterWeeks, setEndsAfterWeeks] = useState(8)
 
   const host = hosts.find(h => h.id === hostId)
   const chosenDT = parseDateStrict(date)
@@ -103,6 +106,37 @@ export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
             <span className="field-error">Enter a valid date between 2026 and 2028.</span>
           )}
         </label>
+        <label className="field">
+          <span>Repeats</span>
+          <select value={repeats} onChange={e => setRepeats(e.target.value)}>
+            <option value="none">Does not repeat</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </label>
+        {repeats === 'weekly' && (
+          <div className="field">
+            <span>Ends</span>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <select value={endsType} onChange={e => setEndsType(e.target.value)} style={{ flex: '0 0 auto' }}>
+                <option value="never">Never</option>
+                <option value="after">After</option>
+              </select>
+              {endsType === 'after' && (
+                <>
+                  <input
+                    type="number"
+                    value={endsAfterWeeks}
+                    min={2}
+                    max={52}
+                    onChange={e => setEndsAfterWeeks(Math.max(2, Math.min(52, Number(e.target.value) || 2)))}
+                    style={{ width: '3.5rem' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', color: 'var(--muted)', whiteSpace: 'nowrap' }}>weeks</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {dateValid && banner && <div className="dst-banner">{banner}</div>}
@@ -113,7 +147,7 @@ export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
         ) : (
           <div className="slots-grid">
             {slots.map((s, i) => (
-              <button key={i} className="slot-btn" onClick={() => onBook({ slot: s, host, inviteeZone })}>
+              <button key={i} className="slot-btn" onClick={() => onBook({ slot: s, host, inviteeZone, repeats, endsAfterWeeks: repeats === 'weekly' && endsType === 'after' ? endsAfterWeeks : null })}>
                 <span className="slot-primary">
                   {s.inviteeDT.toFormat('HH:mm')} your time
                   <em> ({cityLabel(inviteeZone)}, {tzAbbr(s.inviteeDT)})</em>

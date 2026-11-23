@@ -5,12 +5,11 @@ import { cityLabel, tzAbbr } from '../utils/slots.js'
 export default function ConfirmStep({ booking, onConfirm, onBack }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [isRecurring, setIsRecurring] = useState(true)
   const { slot, host, inviteeZone } = booking
 
   function handleSubmit(e) {
     e.preventDefault()
-    onConfirm({ ...booking, inviteeName: name, inviteeEmail: email, isRecurring })
+    onConfirm({ ...booking, inviteeName: name, inviteeEmail: email })
   }
 
   return (
@@ -29,7 +28,13 @@ export default function ConfirmStep({ booking, onConfirm, onBack }) {
             <em> ({cityLabel(host.zone)}, {tzAbbr(slot.hostDT)})</em>
           </span>
         </div>
-        <p className="confirm-meta">Weekly {company.meetingType}, 8 weeks from {slot.hostDT.toFormat('d MMM yyyy')}</p>
+        {booking.repeats === 'weekly' && (
+          <p className="confirm-meta">
+            {booking.endsAfterWeeks
+              ? `Weekly ${company.meetingType}, ${booking.endsAfterWeeks} weeks from ${slot.hostDT.toFormat('d MMM yyyy')}`
+              : `Weekly ${company.meetingType} from ${slot.hostDT.toFormat('d MMM yyyy')}`}
+          </p>
+        )}
         <p className="confirm-meta">{company.name} · {host.name} · {company.durationMin} min</p>
       </div>
 
@@ -41,20 +46,6 @@ export default function ConfirmStep({ booking, onConfirm, onBack }) {
         <label className="field">
           <span>Email</span>
           <input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@example.com" />
-        </label>
-        <label className="field" style={{ flexDirection: 'row', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={isRecurring}
-            onChange={e => setIsRecurring(e.target.checked)}
-            style={{ marginTop: '0.25rem', flexShrink: 0 }}
-          />
-          <span>
-            Repeat weekly for 8 weeks
-            <span style={{ display: 'block', fontWeight: 400, color: 'var(--muted)', fontSize: '0.78rem', marginTop: '0.15rem' }}>
-              Same time each week. We'll warn you if a clock change moves it.
-            </span>
-          </span>
         </label>
         <button className="btn-primary" type="submit">Confirm booking</button>
       </form>
