@@ -25,19 +25,22 @@ export function generateSlots(host, dateISO, inviteeZone) {
   return slots
 }
 
-// Scan `days` days forward from fromDateISO for DST transitions in zone.
+// For each candidate day D in [fromDateISO, fromDateISO + days),
+// compare the zone's UTC offset at 12:00 on (D-1) with 12:00 on D.
+// If they differ, the clock change happened on D.
 export function findClockChanges(zone, fromDateISO, days = 14) {
   const changes = []
-  const start = DateTime.fromISO(fromDateISO, { zone })
+  const base = DateTime.fromISO(fromDateISO, { zone }).startOf('day')
   for (let i = 0; i < days; i++) {
-    const a = start.plus({ days: i })
-    const b = start.plus({ days: i + 1 })
-    if (a.offset !== b.offset) {
+    const D = base.plus({ days: i })
+    const prevNoon = D.minus({ days: 1 }).set({ hour: 12, minute: 0, second: 0, millisecond: 0 })
+    const currNoon = D.set({ hour: 12, minute: 0, second: 0, millisecond: 0 })
+    if (prevNoon.offset !== currNoon.offset) {
       changes.push({
         zone,
-        date: b.startOf('day'),
-        offsetBefore: a.offset,
-        offsetAfter: b.offset,
+        date: D,
+        offsetBefore: prevNoon.offset,
+        offsetAfter: currNoon.offset,
       })
     }
   }

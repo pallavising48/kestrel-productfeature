@@ -27,10 +27,10 @@ export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
   const banner = useMemo(() => {
     if (!dateValid || host.zone === inviteeZone) return null
 
-    // Scan 1 day before the chosen date through +14 days (15-day window)
-    const scanStart = chosenDT.minus({ days: 1 }).toISODate()
-    const hChanges = findClockChanges(host.zone, scanStart, 15)
-    const iChanges = findClockChanges(inviteeZone, scanStart, 15)
+    // 14 days before + 14 days after the chosen date (29-day window)
+    const scanStart = chosenDT.minus({ days: 14 }).toISODate()
+    const hChanges = findClockChanges(host.zone, scanStart, 29)
+    const iChanges = findClockChanges(inviteeZone, scanStart, 29)
 
     // Deduplicate: at most one entry per zone per change date
     const seen = new Set()
@@ -60,10 +60,13 @@ export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
       gapText = `The gap to ${host.name.split(' ')[0]} is now ${gapNow} hours.`
     }
 
+    // Past tense for changes before the chosen date, future tense for after
     const parts = all.map((c, i) => {
       const city = cityLabel(c.zone)
       const d = c.date.toFormat('d MMM')
-      return i === 0 ? `Clocks change in ${city} on ${d}` : `and in ${city} on ${d}`
+      const isPast = c.date < chosenDT
+      if (i === 0) return isPast ? `Clocks changed in ${city} on ${d}` : `Clocks change in ${city} on ${d}`
+      return isPast ? `and changed in ${city} on ${d}` : `and change in ${city} on ${d}`
     })
 
     return `${parts.join(' ')}. ${gapText} Times below are already adjusted.`
@@ -71,12 +74,12 @@ export default function BookingPage({ onBook, inviteeZone, onZoneChange }) {
 
   return (
     <div className="screen">
-      <h2 className="screen-heading">Book a {company.meetingType}</h2>
+      <h2 className="screen-heading">Book a {company.meetingType} with {company.name}</h2>
       <p className="screen-sub">{company.name} · {company.durationMin} min</p>
 
       <div className="controls">
         <label className="field">
-          <span>Host</span>
+          <span>Meet with</span>
           <select value={hostId} onChange={e => setHostId(e.target.value)}>
             {hosts.map(h => <option key={h.id} value={h.id}>{h.name} ({cityLabel(h.zone)})</option>)}
           </select>

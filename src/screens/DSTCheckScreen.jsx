@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { DateTime } from 'luxon'
 import { hosts, inviteeZones, company } from '../data/seed.js'
-import { cityLabel, tzAbbr } from '../utils/slots.js'
+import { cityLabel, tzAbbr, findClockChanges } from '../utils/slots.js'
 
 const ANCHOR_DATE = '2027-03-02'
 const DEFAULT_ANCHOR_TIME = '10:00'
@@ -29,17 +29,9 @@ function getOccurrences(host, inviteeZone, anchorTime, count = 8) {
         const hostSideChanged = prev.hostDT.offset !== cursor.offset
         // Attribute the change to whichever side's offset moved
         changingZone = inviteeSideChanged ? inviteeZone : host.zone
-        // Find the exact transition date by probing in that zone
-        let probe = DateTime.fromISO(prev.hostDT.toISODate(), { zone: changingZone })
-        const probeEnd = DateTime.fromISO(cursor.toISODate(), { zone: changingZone })
-        while (probe < probeEnd) {
-          const next = probe.plus({ days: 1 })
-          if (probe.offset !== next.offset) {
-            changeDate = next.startOf('day')
-            break
-          }
-          probe = next
-        }
+        // Use noon-comparison to find the exact transition date
+        const changes = findClockChanges(changingZone, prev.hostDT.toISODate(), 8)
+        changeDate = changes[0]?.date ?? null
       }
     }
 
