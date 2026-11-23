@@ -41,9 +41,11 @@ function TimeLine({ primaryDT, primaryCity, secondaryDT, secondaryCity, secondar
       <strong>
         {primaryDT.toFormat('HH:mm')} {primaryCity} ({tzAbbr(primaryDT)})
       </strong>
-      <span className="email-time-secondary-inline">
-        {' · '}{secondaryName}: {secondaryDT.toFormat('HH:mm')} {secondaryCity} ({tzAbbr(secondaryDT)})
-      </span>
+      {secondaryName && (
+        <span className="email-time-secondary-inline">
+          {' · '}{secondaryName}: {secondaryDT.toFormat('HH:mm')} {secondaryCity} ({tzAbbr(secondaryDT)})
+        </span>
+      )}
     </p>
   )
 }
@@ -71,6 +73,7 @@ export default function ConfirmationScreen({ booking, onReset }) {
   const { slot, host, inviteeZone, inviteeName = 'Alex Chen' } = booking
   const [role, setRole] = useState('invitee')
   const isInvitee = role === 'invitee'
+  const isSameZone = host.zone === inviteeZone
   const recipientName = isInvitee ? inviteeName : host.name.split(' ')[0]
   const subjectDate = slot.hostDT.toFormat('EEE d MMM')
 
@@ -149,14 +152,17 @@ export default function ConfirmationScreen({ booking, onReset }) {
         {isInvitee ? (
           <TimeLine
             primaryDT={slot.inviteeDT} primaryCity={cityLabel(inviteeZone)}
-            secondaryDT={slot.hostDT}  secondaryCity={cityLabel(host.zone)} secondaryName={host.name.split(' ')[0]}
+            secondaryDT={slot.hostDT}  secondaryCity={cityLabel(host.zone)}
+            secondaryName={isSameZone ? null : host.name.split(' ')[0]}
           />
         ) : (
           <TimeLine
             primaryDT={slot.hostDT}   primaryCity={cityLabel(host.zone)}
-            secondaryDT={slot.inviteeDT} secondaryCity={cityLabel(inviteeZone)} secondaryName={inviteeName}
+            secondaryDT={slot.inviteeDT} secondaryCity={cityLabel(inviteeZone)}
+            secondaryName={isSameZone ? null : inviteeName}
           />
         )}
+        {isSameZone && <p>You and {isInvitee ? host.name.split(' ')[0] : inviteeName} are in the same time zone.</p>}
         {isInvitee && <p>Host: {host.name}</p>}
       </EmailCard>
 
@@ -169,14 +175,17 @@ export default function ConfirmationScreen({ booking, onReset }) {
         {isInvitee ? (
           <TimeLine
             primaryDT={slot.inviteeDT} primaryCity={cityLabel(inviteeZone)}
-            secondaryDT={slot.hostDT}  secondaryCity={cityLabel(host.zone)} secondaryName={host.name.split(' ')[0]}
+            secondaryDT={slot.hostDT}  secondaryCity={cityLabel(host.zone)}
+            secondaryName={isSameZone ? null : host.name.split(' ')[0]}
           />
         ) : (
           <TimeLine
             primaryDT={slot.hostDT}   primaryCity={cityLabel(host.zone)}
-            secondaryDT={slot.inviteeDT} secondaryCity={cityLabel(inviteeZone)} secondaryName={inviteeName}
+            secondaryDT={slot.inviteeDT} secondaryCity={cityLabel(inviteeZone)}
+            secondaryName={isSameZone ? null : inviteeName}
           />
         )}
+        {isSameZone && <p>You and {isInvitee ? host.name.split(' ')[0] : inviteeName} are in the same time zone.</p>}
       </EmailCard>
 
       {/* Email 3: Clock-change heads-up */}
@@ -216,7 +225,7 @@ export default function ConfirmationScreen({ booking, onReset }) {
         <div className="email-card email-card--muted">
           <div className="email-label">Clock change heads-up</div>
           <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--muted)' }}>
-            No clock changes in this series.
+            No clock changes affect this weekly series (8 weeks from {slot.hostDT.toFormat('d MMM yyyy')}).
           </p>
         </div>
       )}
