@@ -70,12 +70,15 @@ function EmailCard({ label, subject, sendStatus, children }) {
 }
 
 export default function ConfirmationScreen({ booking, onReset }) {
-  const { slot, host, inviteeZone, inviteeName = 'Alex Chen' } = booking
+  const { slot, host, inviteeZone, inviteeName = 'Alex Chen', isRecurring = true } = booking
   const [role, setRole] = useState('invitee')
   const isInvitee = role === 'invitee'
   const isSameZone = host.zone === inviteeZone
   const recipientName = isInvitee ? inviteeName : host.name.split(' ')[0]
   const subjectDate = slot.hostDT.toFormat('EEE d MMM')
+  const confirmSubject = isRecurring
+    ? `Confirmed: weekly ${company.meetingType} from ${subjectDate}`
+    : `Confirmed: ${company.meetingType}, ${subjectDate}`
 
   // 8 weekly occurrences starting from the booked slot
   const occurrences = Array.from({ length: 8 }, (_, i) => ({
@@ -142,7 +145,7 @@ export default function ConfirmationScreen({ booking, onReset }) {
       </div>
 
       {/* Email 1: Confirmation */}
-      <EmailCard subject={`Confirmed: ${company.meetingType}, ${subjectDate}`}>
+      <EmailCard subject={confirmSubject}>
         <p>Hi {recipientName},</p>
         <p>
           {isInvitee
@@ -189,7 +192,14 @@ export default function ConfirmationScreen({ booking, onReset }) {
       </EmailCard>
 
       {/* Email 3: Clock-change heads-up */}
-      {hasHeadsUp ? (
+      {!isRecurring ? (
+        <div className="email-card email-card--muted">
+          <div className="email-label">Clock change heads-up</div>
+          <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--muted)' }}>
+            One-off meeting, no clock change affects it.
+          </p>
+        </div>
+      ) : hasHeadsUp ? (
         <EmailCard
           label="Email preview · clock change heads-up"
           subject={`Your weekly ${company.meetingType} time is changing`}

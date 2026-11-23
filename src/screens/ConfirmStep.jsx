@@ -5,11 +5,12 @@ import { cityLabel, tzAbbr } from '../utils/slots.js'
 export default function ConfirmStep({ booking, onConfirm, onBack }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [isRecurring, setIsRecurring] = useState(true)
   const { slot, host, inviteeZone } = booking
 
   function handleSubmit(e) {
     e.preventDefault()
-    onConfirm({ ...booking, inviteeName: name, inviteeEmail: email })
+    onConfirm({ ...booking, inviteeName: name, inviteeEmail: email, isRecurring })
   }
 
   return (
@@ -40,6 +41,20 @@ export default function ConfirmStep({ booking, onConfirm, onBack }) {
         <label className="field">
           <span>Email</span>
           <input required type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="alex@example.com" />
+        </label>
+        <label className="field" style={{ flexDirection: 'row', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={isRecurring}
+            onChange={e => setIsRecurring(e.target.checked)}
+            style={{ marginTop: '0.25rem', flexShrink: 0 }}
+          />
+          <span>
+            Repeat weekly for 8 weeks
+            <span style={{ display: 'block', fontWeight: 400, color: 'var(--muted)', fontSize: '0.78rem', marginTop: '0.15rem' }}>
+              Same time each week. We'll warn you if a clock change moves it.
+            </span>
+          </span>
         </label>
         <button className="btn-primary" type="submit">Confirm booking</button>
       </form>
